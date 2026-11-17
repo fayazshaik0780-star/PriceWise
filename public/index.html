@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PriceWise - Compare Prices &amp; Save Money</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <header>
+        <nav class="navbar">
+            <h1 class="logo">Best Price</h1>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="pages/products.html">Products</a></li>
+                <li><a href="pages/compare.html">Compare</a></li>
+                <li><a href="pages/wishlist.html">Wishlist</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <h2>Compare Prices. Save Money.</h2>
+        <p>Find the best deals on your favourite products.</p>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Search products...">
+            <button id="searchButton" type="button">Search</button>
+        </div>
+    </section>
+
+    <section class="categories">
+        <h2>Shop By Categories</h2>
+        <div class="category-container">
+            <div class="category-card">
+                <h3>Electronics</h3>
+                <p>Explore electronic products</p>
+            </div>
+            <div class="category-card">
+                <h3>Mobiles</h3>
+                <p>Find your favourite smartphone</p>
+            </div>
+            <div class="category-card">
+                <h3>Accessories</h3>
+                <p>Discover useful accessories</p>
+            </div>
+            <div class="category-card">
+                <h3>Fashion</h3>
+                <p>Discover at lowest prices</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="products">
+        <h2>Explore Products</h2>
+        <div class="filter-container">
+            <select id="categoryFilter">
+                <option value="all">All Categories</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Mobiles">Mobiles</option>
+                <option value="Accessories">Accessories</option>
+            </select>
+            <select id="sortFilter">
+                <option value="default">Sort By</option>
+                <option value="low">Price: Low to High</option>
+                <option value="high">Price: High to Low</option>
+                <option value="az">Name: A to Z</option>
+            </select>
+        </div>
+        <div class="product-container" id="productContainer"></div>
+    </section>
+
+    <section class="comparison-section" id="comparisonSection" hidden>
+        <h2>Price Comparison</h2>
+        <h3 id="comparisonProductName"></h3>
+        <div id="comparisonResult"></div>
+    </section>
+
+    <footer>
+        <p>© 2026 PriceWise. All Rights Reserved.</p>
+        <p>Compare Smartly. Save More.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
