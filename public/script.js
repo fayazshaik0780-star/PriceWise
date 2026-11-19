@@ -109,14 +109,36 @@ let currentProducts = [...products];
 // GET HTML ELEMENTS
 // ==========================================
 
-const productContainer = document.getElementById("productContainer");
-const searchInput = document.getElementById("searchInput");
-const searchButton = document.getElementById("searchButton");
-const categoryFilter = document.getElementById("categoryFilter");
-const sortFilter = document.getElementById("sortFilter");
-const comparisonSection = document.getElementById("comparisonSection");
-const comparisonProductName = document.getElementById("comparisonProductName");
-const comparisonResult = document.getElementById("comparisonResult");
+const productContainer =
+    document.getElementById("productContainer");
+
+const searchInput =
+    document.getElementById("searchInput");
+
+const searchButton =
+    document.getElementById("searchButton");
+
+const categoryFilter =
+    document.getElementById("categoryFilter");
+
+const sortFilter =
+    document.getElementById("sortFilter");
+
+const comparisonSection =
+    document.getElementById("comparisonSection");
+
+const comparisonProductName =
+    document.getElementById("comparisonProductName");
+
+const comparisonResult =
+    document.getElementById("comparisonResult");
+
+// These two inputs must exist in index.html.
+const cromaUrlInput =
+    document.getElementById("cromaUrlInput");
+
+const relianceUrlInput =
+    document.getElementById("relianceUrlInput");
 
 
 // ==========================================
@@ -124,7 +146,9 @@ const comparisonResult = document.getElementById("comparisonResult");
 // ==========================================
 
 function escapeHTML(value) {
+
     return String(value ?? "").replace(/[&<>"']/g, function(char) {
+
         const entities = {
             "&": "&amp;",
             "<": "&lt;",
@@ -134,184 +158,110 @@ function escapeHTML(value) {
         };
 
         return entities[char];
+
     });
+
 }
 
 
 function safeURL(value) {
+
     try {
+
         const url = new URL(value);
 
-        if (url.protocol === "https:" || url.protocol === "http:") {
+        if (
+            url.protocol === "https:" ||
+            url.protocol === "http:"
+        ) {
             return escapeHTML(url.href);
         }
 
         return "";
+
     } catch {
+
         return "";
+
     }
+
 }
 
 
 function formatPrice(price) {
+
     return Number(price).toLocaleString("en-IN");
+
 }
 
 
 // ==========================================
-// PRICEGRID PRODUCT MAPPING
+// PRICEGRID API - FETCH PRICE USING URL
 // ==========================================
 
-// These IDs currently support the iPhone 17
-// Black 256 GB variant only.
+async function getPriceGridPriceFromURL(platform, productUrl) {
 
-const priceGridProductCatalog = [
-    {
-        match: function(productName) {
-            const name = String(productName || "")
-                .toLowerCase()
-                .replace(/[\u00a0\u2000-\u200b\u202f]/g, " ")
-                .replace(/\s+/g, " ")
-                .trim();
-
-            return (
-                /iphone\s*17/.test(name) &&
-                /256\s*gb/.test(name) &&
-                /black/.test(name)
-            );
-        },
-
-        products: [
-            {
-                name: "Croma",
-                platform: "croma",
-                pid: "324530"
-            },
-            {
-                name: "Reliance Digital",
-                platform: "reliancedigital",
-                pid: "9391619"
-            }
-        ]
-    }
-];
-
-
-// ==========================================
-// PRICEGRID REQUEST CACHE
-// ==========================================
-
-const priceGridCache = new Map();
-
-
-async function getPriceGridPrice(store) {
-
-    const cacheKey = store.platform + "-" + store.pid;
-
-    if (priceGridCache.has(cacheKey)) {
-        return priceGridCache.get(cacheKey);
+    if (!productUrl || !productUrl.trim()) {
+        return null;
     }
 
-    const request = (async function() {
-        try {
-            const apiUrl =
-                `/.netlify/functions/pricegrid-product?platform=${encodeURIComponent(store.platform)}&pid=${encodeURIComponent(store.pid)}`;
+    const storeName =
+        platform === "croma" ? "Croma" : "Reliance Digital";
 
-            console.log("PriceGrid request:", apiUrl);
+    try {
 
-            const response = await fetch(apiUrl);
+        const apiUrl =
+            `/.netlify/functions/pricegrid-product?platform=${encodeURIComponent(platform)}&productUrl=${encodeURIComponent(productUrl.trim())}`;
 
-            const result = await response.json();
+        const response = await fetch(apiUrl);
 
-            console.log("PriceGrid API response:", store.name, result);
+        const result = await response.json();
 
-            const rawPrice = result.data?.price;
-            const price = rawPrice == null ? null : Number(rawPrice);
+        console.log("PriceGrid URL result:", platform, result);
 
-            if (
-                !response.ok ||
-                !result.success ||
-                result.data?.available !== true ||
-                price === null ||
-                !Number.isFinite(price) ||
-                price <= 0
-            ) {
-                return {
-                    name: store.name,
-                    price: null,
-                    link: result.data?.url || "",
-                    available: false
-                };
-            }
+        const price =
+            result.data?.price == null
+                ? null
+                : Number(result.data.price);
+
+        if (
+            !response.ok ||
+            !result.success ||
+            result.data?.available !== true ||
+            price === null ||
+            !Number.isFinite(price) ||
+            price <= 0
+        ) {
 
             return {
-                name: store.name,
-                price: price,
-                link: result.data?.url || "",
-                available: true
-            };
-
-        } catch (error) {
-            console.error("PriceGrid error:", store.name, error);
-
-            return {
-                name: store.name,
+                name: storeName,
                 price: null,
-                link: "",
+                link: result.data?.url || "",
                 available: false
             };
+
         }
-    })();
 
-    priceGridCache.set(cacheKey, request);
+        return {
+            name: storeName,
+            price: price,
+            link: result.data.url || productUrl,
+            available: true
+        };
 
-    return request;
-}
+    } catch (error) {
 
+        console.error("PriceGrid URL error:", error);
 
-// ==========================================
-// ADD PRICEGRID PRICES TO A PRODUCT
-// ==========================================
+        return {
+            name: storeName,
+            price: null,
+            link: productUrl,
+            available: false
+        };
 
-async function enrichWithPriceGrid(product) {
-
-    console.log("Checking PriceGrid for:", product.name);
-
-    const mapping = priceGridProductCatalog.find(function(item) {
-        return item.match(product.name);
-    });
-
-    if (!mapping) {
-        console.log("No PriceGrid mapping for:", product.name);
-        return product;
     }
 
-    console.log("PriceGrid mapping matched:", product.name);
-
-    const priceGridStores = await Promise.all(
-        mapping.products.map(getPriceGridPrice)
-    );
-
-    // Keep Flipkart and remove old Croma/Reliance entries.
-
-    const existingStores = (product.stores || []).filter(function(store) {
-        return (
-            store.name !== "Croma" &&
-            store.name !== "Reliance Digital"
-        );
-    });
-
-    // Add live PriceGrid results.
-
-    product.stores = [
-        ...existingStores,
-        ...priceGridStores
-    ];
-
-    console.log("PriceGrid results:", priceGridStores);
-    console.log("Final comparison stores:", product.stores);
-
-    return product;
 }
 
 
@@ -324,26 +274,34 @@ function displayProducts(productList) {
     productContainer.innerHTML = "";
 
     if (productList.length === 0) {
+
         productContainer.innerHTML =
             "<p class='no-products'>No products found!</p>";
+
         return;
+
     }
 
     productList.forEach(function(product) {
 
         const productCard = document.createElement("div");
+
         productCard.className = "product-card";
 
         const imageURL = safeURL(product.image);
+
         const buyLink = safeURL(product.buyLink);
 
         productCard.innerHTML = `
+
             <div class="product-image">
+
                 <img
                     src="${imageURL}"
                     alt="${escapeHTML(product.name)}"
                     onerror="this.style.display='none'"
                 >
+
             </div>
 
             <div class="product-details">
@@ -367,36 +325,48 @@ function displayProducts(productList) {
                     class="compare-btn"
                     type="button"
                     data-product-id="${escapeHTML(product.id)}">
+
                     Compare Prices
+
                 </button>
 
                 ${buyLink ? `
+
                     <a
                         href="${buyLink}"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="buy-btn">
+
                         Buy on Flipkart
+
                     </a>
+
                 ` : ""}
 
                 <button
                     class="wishlist-btn"
                     type="button"
                     data-product-id="${escapeHTML(product.id)}">
+
                     ❤️ Add to Wishlist
+
                 </button>
 
             </div>
+
         `;
 
         productContainer.appendChild(productCard);
+
     });
+
 }
 
 
 // ==========================================
 // FLIPKART LIVE PRODUCT SEARCH
+// QUICKCOMMERCE API
 // ==========================================
 
 async function searchFlipkartProducts() {
@@ -404,11 +374,15 @@ async function searchFlipkartProducts() {
     const searchValue = searchInput.value.trim();
 
     if (!searchValue) {
+
         alert("Please enter a product name!");
+
         return;
+
     }
 
     searchButton.disabled = true;
+
     searchButton.textContent = "Searching...";
 
     productContainer.innerHTML =
@@ -417,7 +391,7 @@ async function searchFlipkartProducts() {
     try {
 
         // Existing QuickCommerce integration.
-        // This request is kept unchanged.
+        // API key remains securely on Netlify.
 
         const response = await fetch(
             `/api/products/search?q=${encodeURIComponent(searchValue)}&platform=Flipkart`
@@ -426,15 +400,17 @@ async function searchFlipkartProducts() {
         const result = await response.json();
 
         if (!response.ok || !result.success) {
+
             throw new Error(
                 result.message || "Unable to fetch products"
             );
+
         }
 
         const apiProducts =
             result.data?.data?.products || [];
 
-        // Convert Flipkart products into PriceWise format.
+        // Convert API results into PriceWise format.
 
         const flipkartProducts = apiProducts.map(function(item, index) {
 
@@ -447,6 +423,7 @@ async function searchFlipkartProducts() {
             );
 
             return {
+
                 id: "flipkart-" + (item.id || index),
 
                 name: item.name || "Unnamed Product",
@@ -462,54 +439,43 @@ async function searchFlipkartProducts() {
                 buyLink: item.deeplink || "",
 
                 stores: [
+
                     {
                         name: "Flipkart",
                         price: price,
                         link: item.deeplink || ""
                     }
+
                 ]
+
             };
+
         });
 
+        console.log("Flipkart products loaded:", flipkartProducts);
 
-        // ==========================================
-        // FETCH PRICEGRID PRICES
-        // ==========================================
-
-        if (flipkartProducts.length > 0) {
-
-            productContainer.innerHTML = `
-                <p>
-                    Products found! Checking Croma and
-                    Reliance Digital prices...
-                </p>
-            `;
-
-            await Promise.all(
-                flipkartProducts.map(enrichWithPriceGrid)
-            );
-        }
-
-
-        // Replace sample products with live results.
+        // Update current product list.
 
         currentProducts = flipkartProducts;
 
         // Reset filters.
 
         categoryFilter.value = "all";
+
         sortFilter.value = "default";
 
-        // Display updated products.
+        // Display products.
 
         displayProducts(flipkartProducts);
 
         if (flipkartProducts.length === 0) {
+
             productContainer.innerHTML =
                 "<p class='no-products'>No Flipkart products found!</p>";
+
         }
 
-        // Hide old comparison results.
+        // Hide previous comparison.
 
         comparisonSection.hidden = true;
 
@@ -518,16 +484,23 @@ async function searchFlipkartProducts() {
         console.error("Product Search Error:", error);
 
         productContainer.innerHTML = `
+
             <p class="no-products">
+
                 ${escapeHTML(error.message)}
+
             </p>
+
         `;
 
     } finally {
 
         searchButton.disabled = false;
+
         searchButton.textContent = "Search";
+
     }
+
 }
 
 
@@ -547,34 +520,51 @@ function updateProducts() {
         sortFilter.value;
 
     let result = currentProducts.filter(function(product) {
+
         return product.name
             .toLowerCase()
             .includes(searchValue);
+
     });
 
     if (selectedCategory !== "all") {
+
         result = result.filter(function(product) {
+
             return product.category === selectedCategory;
+
         });
+
     }
 
     if (sortValue === "low") {
+
         result.sort(function(a, b) {
+
             return a.price - b.price;
+
         });
 
     } else if (sortValue === "high") {
+
         result.sort(function(a, b) {
+
             return b.price - a.price;
+
         });
 
     } else if (sortValue === "az") {
+
         result.sort(function(a, b) {
+
             return a.name.localeCompare(b.name);
+
         });
+
     }
 
     displayProducts(result);
+
 }
 
 
@@ -585,36 +575,50 @@ function updateProducts() {
 function getWishlist() {
 
     try {
+
         return JSON.parse(
             localStorage.getItem("wishlist")
         ) || [];
 
     } catch {
+
         return [];
+
     }
+
 }
 
 
 function addToWishlist(productId) {
 
     const product = currentProducts.find(function(item) {
+
         return String(item.id) === String(productId);
+
     });
 
     if (!product) {
+
         alert("Product not found!");
+
         return;
+
     }
 
     let wishlist = getWishlist();
 
     const alreadyExists = wishlist.some(function(item) {
+
         return String(item.id) === String(productId);
+
     });
 
     if (alreadyExists) {
+
         alert("Product is already in your wishlist!");
+
         return;
+
     }
 
     wishlist.push(product);
@@ -625,81 +629,165 @@ function addToWishlist(productId) {
     );
 
     alert(product.name + " added to wishlist!");
+
 }
 
 
 // ==========================================
 // PRICE COMPARISON
+// PRICEGRID + FLIPKART
 // ==========================================
 
-function comparePrices(productId) {
+async function comparePrices(productId) {
 
     const product = currentProducts.find(function(item) {
+
         return String(item.id) === String(productId);
+
     });
 
     if (!product) {
+
         alert("Product not found!");
+
         return;
+
     }
 
-    const stores = product.stores || [];
-
-    if (stores.length === 0) {
-        alert("No store prices available!");
-        return;
-    }
-
-    // Only use valid, positive prices.
-
-    const availableStores = stores.filter(function(store) {
-        return (
-            store.price !== null &&
-            store.price !== undefined &&
-            Number.isFinite(Number(store.price)) &&
-            Number(store.price) > 0
-        );
-    });
-
-    // Find cheapest store.
-
-    const cheapestStore = availableStores.length > 0
-        ? availableStores.reduce(function(min, store) {
-            return Number(store.price) < Number(min.price)
-                ? store
-                : min;
-        })
-        : null;
-
-    // Find highest price.
-
-    const highestPrice = availableStores.length > 0
-        ? Math.max(
-            ...availableStores.map(function(store) {
-                return Number(store.price);
-            })
-        )
-        : null;
-
-    // Calculate savings.
-
-    const savings = availableStores.length > 1
-        ? highestPrice - Number(cheapestStore.price)
-        : 0;
+    // Show comparison section and loading message.
 
     comparisonSection.hidden = false;
 
     comparisonProductName.textContent = product.name;
 
     comparisonResult.innerHTML = `
+        <p>Checking prices from Croma and Reliance Digital...</p>
+    `;
+
+    comparisonSection.scrollIntoView({
+        behavior: "smooth"
+    });
+
+    // Keep existing stores except old Croma and Reliance entries.
+
+    let stores = (product.stores || []).filter(function(store) {
+
+        return (
+            store.name !== "Croma" &&
+            store.name !== "Reliance Digital"
+        );
+
+    });
+
+    // Read product URLs entered by the user.
+
+    const cromaUrl = cromaUrlInput
+        ? cromaUrlInput.value.trim()
+        : "";
+
+    const relianceUrl = relianceUrlInput
+        ? relianceUrlInput.value.trim()
+        : "";
+
+    // Fetch only the URLs supplied by the user.
+
+    const priceGridRequests = [];
+
+    if (cromaUrl) {
+
+        priceGridRequests.push(
+            getPriceGridPriceFromURL("croma", cromaUrl)
+        );
+
+    }
+
+    if (relianceUrl) {
+
+        priceGridRequests.push(
+            getPriceGridPriceFromURL("reliancedigital", relianceUrl)
+        );
+
+    }
+
+    // Wait for PriceGrid responses.
+
+    if (priceGridRequests.length > 0) {
+
+        const priceGridResults =
+            await Promise.all(priceGridRequests);
+
+        stores = [
+            ...stores,
+            ...priceGridResults
+        ];
+
+    }
+
+    // Save updated stores to the product.
+
+    product.stores = stores;
+
+    // Only valid prices are used for comparison.
+
+    const availableStores = stores.filter(function(store) {
+
+        return (
+            store.price !== null &&
+            store.price !== undefined &&
+            Number.isFinite(Number(store.price)) &&
+            Number(store.price) > 0
+        );
+
+    });
+
+    // Find cheapest store.
+
+    const cheapestStore = availableStores.length > 0
+
+        ? availableStores.reduce(function(min, store) {
+
+            return Number(store.price) < Number(min.price)
+                ? store
+                : min;
+
+        })
+
+        : null;
+
+    // Find highest price.
+
+    const highestPrice = availableStores.length > 0
+
+        ? Math.max(
+            ...availableStores.map(function(store) {
+                return Number(store.price);
+            })
+        )
+
+        : null;
+
+    // Calculate savings.
+
+    const savings = availableStores.length > 1
+
+        ? highestPrice - Number(cheapestStore.price)
+
+        : 0;
+
+    // Display comparison table.
+
+    comparisonResult.innerHTML = `
+
         <table class="comparison-table">
 
             <thead>
+
                 <tr>
                     <th>Store</th>
                     <th>Price</th>
                     <th>Status</th>
                 </tr>
+
             </thead>
 
             <tbody>
@@ -720,36 +808,48 @@ function comparePrices(productId) {
                     const link = safeURL(store.link);
 
                     return `
+
                         <tr>
 
                             <td>
+
                                 ${link ? `
+
                                     <a
                                         href="${link}"
                                         target="_blank"
                                         rel="noopener noreferrer">
+
                                         ${escapeHTML(store.name)}
+
                                     </a>
+
                                 ` : escapeHTML(store.name)}
+
                             </td>
 
                             <td>
+
                                 ${isAvailable
                                     ? "₹" + formatPrice(store.price)
                                     : "Currently unavailable"
                                 }
+
                             </td>
 
                             <td>
+
                                 ${!isAvailable
                                     ? "Unavailable"
                                     : isCheapest
                                         ? "Cheapest Price"
                                         : "Available"
                                 }
+
                             </td>
 
                         </tr>
+
                     `;
 
                 }).join("")}
@@ -761,31 +861,45 @@ function comparePrices(productId) {
         ${cheapestStore ? `
 
             <p class="best-deal">
+
                 Best Deal: ${escapeHTML(cheapestStore.name)}
+
             </p>
 
             ${availableStores.length > 1 ? `
+
                 <p class="savings">
+
                     You can save ₹${formatPrice(savings)}
+
                 </p>
+
             ` : `
+
                 <p class="savings">
+
                     Only one store has a valid price.
+
                 </p>
+
             `}
 
         ` : `
 
             <p class="best-deal">
+
                 No live store prices are currently available.
+
             </p>
 
         `}
+
     `;
 
     comparisonSection.scrollIntoView({
         behavior: "smooth"
     });
+
 }
 
 
@@ -799,22 +913,28 @@ productContainer.addEventListener("click", function(event) {
         event.target.closest(".compare-btn");
 
     if (compareButton) {
+
         const productId =
             compareButton.dataset.productId;
 
         comparePrices(productId);
+
         return;
+
     }
 
     const wishlistButton =
         event.target.closest(".wishlist-btn");
 
     if (wishlistButton) {
+
         const productId =
             wishlistButton.dataset.productId;
 
         addToWishlist(productId);
+
     }
+
 });
 
 
@@ -822,31 +942,38 @@ productContainer.addEventListener("click", function(event) {
 // EVENT LISTENERS
 // ==========================================
 
+// Search button.
+
 searchButton.addEventListener(
     "click",
     searchFlipkartProducts
 );
 
 
+// Search using Enter key.
+
 searchInput.addEventListener("keydown", function(event) {
 
     if (event.key === "Enter") {
+
         searchFlipkartProducts();
+
     }
+
 });
 
+
+// Search, filter and sort.
 
 searchInput.addEventListener(
     "input",
     updateProducts
 );
 
-
 categoryFilter.addEventListener(
     "change",
     updateProducts
 );
-
 
 sortFilter.addEventListener(
     "change",
