@@ -12,9 +12,7 @@ const products = [
         image: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500",
         stores: [
             { name: "Amazon", price: 48999 },
-            { name: "Flipkart", price: 49999 },
-            { name: "Croma", price: 49999 },
-            { name: "Reliance Digital", price: 49500 }
+            { name: "Flipkart", price: 49999 }
         ]
     },
     {
@@ -25,9 +23,7 @@ const products = [
         image: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500",
         stores: [
             { name: "Amazon", price: 18999 },
-            { name: "Flipkart", price: 19499 },
-            { name: "Croma", price: 19999 },
-            { name: "Reliance Digital", price: 19500 }
+            { name: "Flipkart", price: 19499 }
         ]
     },
     {
@@ -38,9 +34,7 @@ const products = [
         image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500",
         stores: [
             { name: "Amazon", price: 1399 },
-            { name: "Flipkart", price: 1499 },
-            { name: "Croma", price: 1599 },
-            { name: "Reliance Digital", price: 1450 }
+            { name: "Flipkart", price: 1499 }
         ]
     },
     {
@@ -51,9 +45,7 @@ const products = [
         image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500",
         stores: [
             { name: "Amazon", price: 2299 },
-            { name: "Flipkart", price: 2399 },
-            { name: "Croma", price: 2499 },
-            { name: "Reliance Digital", price: 2450 }
+            { name: "Flipkart", price: 2399 }
         ]
     },
     {
@@ -64,9 +56,7 @@ const products = [
         image: "mouse.webp",
         stores: [
             { name: "Amazon", price: 699 },
-            { name: "Flipkart", price: 749 },
-            { name: "Croma", price: 799 },
-            { name: "Reliance Digital", price: 750 }
+            { name: "Flipkart", price: 749 }
         ]
     },
     {
@@ -77,9 +67,7 @@ const products = [
         image: "keyboard_og.jpg",
         stores: [
             { name: "Amazon", price: 899 },
-            { name: "Flipkart", price: 949 },
-            { name: "Croma", price: 999 },
-            { name: "Reliance Digital", price: 950 }
+            { name: "Flipkart", price: 949 }
         ]
     },
     {
@@ -90,9 +78,7 @@ const products = [
         image: "81HSo6wX54L._AC_SL1500_.jpg",
         stores: [
             { name: "Amazon", price: 1199 },
-            { name: "Flipkart", price: 1249 },
-            { name: "Croma", price: 1299 },
-            { name: "Reliance Digital", price: 1250 }
+            { name: "Flipkart", price: 1249 }
         ]
     }
 ];
@@ -132,13 +118,6 @@ const comparisonProductName =
 
 const comparisonResult =
     document.getElementById("comparisonResult");
-
-// These two inputs must exist in index.html.
-const cromaUrlInput =
-    document.getElementById("cromaUrlInput");
-
-const relianceUrlInput =
-    document.getElementById("relianceUrlInput");
 
 
 // ==========================================
@@ -195,72 +174,15 @@ function formatPrice(price) {
 }
 
 
-// ==========================================
-// PRICEGRID API - FETCH PRICE USING URL
-// ==========================================
+function isValidPrice(price) {
 
-async function getPriceGridPriceFromURL(platform, productUrl) {
-
-    if (!productUrl || !productUrl.trim()) {
-        return null;
-    }
-
-    const storeName =
-        platform === "croma" ? "Croma" : "Reliance Digital";
-
-    try {
-
-        const apiUrl =
-            `/.netlify/functions/pricegrid-product?platform=${encodeURIComponent(platform)}&productUrl=${encodeURIComponent(productUrl.trim())}`;
-
-        const response = await fetch(apiUrl);
-
-        const result = await response.json();
-
-        console.log("PriceGrid URL result:", platform, result);
-
-        const price =
-            result.data?.price == null
-                ? null
-                : Number(result.data.price);
-
-        if (
-            !response.ok ||
-            !result.success ||
-            result.data?.available !== true ||
-            price === null ||
-            !Number.isFinite(price) ||
-            price <= 0
-        ) {
-
-            return {
-                name: storeName,
-                price: null,
-                link: result.data?.url || "",
-                available: false
-            };
-
-        }
-
-        return {
-            name: storeName,
-            price: price,
-            link: result.data.url || productUrl,
-            available: true
-        };
-
-    } catch (error) {
-
-        console.error("PriceGrid URL error:", error);
-
-        return {
-            name: storeName,
-            price: null,
-            link: productUrl,
-            available: false
-        };
-
-    }
+    return (
+        price !== null &&
+        price !== undefined &&
+        price !== "" &&
+        Number.isFinite(Number(price)) &&
+        Number(price) > 0
+    );
 
 }
 
@@ -273,7 +195,7 @@ function displayProducts(productList) {
 
     productContainer.innerHTML = "";
 
-    if (productList.length === 0) {
+    if (!productList || productList.length === 0) {
 
         productContainer.innerHTML =
             "<p class='no-products'>No products found!</p>";
@@ -291,6 +213,10 @@ function displayProducts(productList) {
         const imageURL = safeURL(product.image);
 
         const buyLink = safeURL(product.buyLink);
+
+        const displayedPrice = isValidPrice(product.price)
+            ? "₹" + formatPrice(product.price)
+            : "Price unavailable";
 
         productCard.innerHTML = `
 
@@ -313,7 +239,7 @@ function displayProducts(productList) {
                 <h3>${escapeHTML(product.name)}</h3>
 
                 <p class="price">
-                    ₹${formatPrice(product.price)}
+                    ${displayedPrice}
                 </p>
 
                 ${product.rating
@@ -388,6 +314,8 @@ async function searchFlipkartProducts() {
     productContainer.innerHTML =
         "<p>Searching Flipkart products...</p>";
 
+    comparisonSection.hidden = true;
+
     try {
 
         // Existing QuickCommerce integration.
@@ -428,7 +356,7 @@ async function searchFlipkartProducts() {
 
                 name: item.name || "Unnamed Product",
 
-                category: item.category || "Flipkart",
+                category: item.category || "Electronics",
 
                 price: price,
 
@@ -452,19 +380,16 @@ async function searchFlipkartProducts() {
 
         });
 
-        console.log("Flipkart products loaded:", flipkartProducts);
-
-        // Update current product list.
+        console.log(
+            "Flipkart products loaded:",
+            flipkartProducts
+        );
 
         currentProducts = flipkartProducts;
-
-        // Reset filters.
 
         categoryFilter.value = "all";
 
         sortFilter.value = "default";
-
-        // Display products.
 
         displayProducts(flipkartProducts);
 
@@ -475,10 +400,6 @@ async function searchFlipkartProducts() {
 
         }
 
-        // Hide previous comparison.
-
-        comparisonSection.hidden = true;
-
     } catch (error) {
 
         console.error("Product Search Error:", error);
@@ -486,9 +407,7 @@ async function searchFlipkartProducts() {
         productContainer.innerHTML = `
 
             <p class="no-products">
-
                 ${escapeHTML(error.message)}
-
             </p>
 
         `;
@@ -497,7 +416,7 @@ async function searchFlipkartProducts() {
 
         searchButton.disabled = false;
 
-        searchButton.textContent = "Search";
+        searchButton.textContent = "Search 🔍";
 
     }
 
@@ -541,7 +460,7 @@ function updateProducts() {
 
         result.sort(function(a, b) {
 
-            return a.price - b.price;
+            return Number(a.price) - Number(b.price);
 
         });
 
@@ -549,7 +468,7 @@ function updateProducts() {
 
         result.sort(function(a, b) {
 
-            return b.price - a.price;
+            return Number(b.price) - Number(a.price);
 
         });
 
@@ -634,8 +553,38 @@ function addToWishlist(productId) {
 
 
 // ==========================================
+// AUTOMATIC CROMA AND RELIANCE SEARCH
+// NETLIFY RETAILER-SEARCH FUNCTION
+// ==========================================
+
+async function searchOtherRetailers(productName) {
+
+    const response = await fetch(
+        `/api/retailer-search?query=${encodeURIComponent(productName)}`
+    );
+
+    const result = await response.json();
+
+    console.log("Automatic retailer search result:", result);
+
+    if (!response.ok || !result.success) {
+
+        throw new Error(
+            result.message || "Unable to search other retailers."
+        );
+
+    }
+
+    return Array.isArray(result.stores)
+        ? result.stores
+        : [];
+
+}
+
+
+// ==========================================
 // PRICE COMPARISON
-// PRICEGRID + FLIPKART
+// FLIPKART + CROMA + RELIANCE DIGITAL
 // ==========================================
 
 async function comparePrices(productId) {
@@ -654,21 +603,24 @@ async function comparePrices(productId) {
 
     }
 
-    // Show comparison section and loading message.
-
     comparisonSection.hidden = false;
 
     comparisonProductName.textContent = product.name;
 
     comparisonResult.innerHTML = `
-        <p>Checking prices from Croma and Reliance Digital...</p>
+
+        <p>
+            Searching Croma and Reliance Digital automatically...
+        </p>
+
     `;
 
     comparisonSection.scrollIntoView({
         behavior: "smooth"
     });
 
-    // Keep existing stores except old Croma and Reliance entries.
+    // Keep Amazon and Flipkart entries.
+    // Remove previous retailer results before refreshing.
 
     let stores = (product.stores || []).filter(function(store) {
 
@@ -679,64 +631,53 @@ async function comparePrices(productId) {
 
     });
 
-    // Read product URLs entered by the user.
+    try {
 
-    const cromaUrl = cromaUrlInput
-        ? cromaUrlInput.value.trim()
-        : "";
+        // Automatically search Croma and Reliance Digital.
 
-    const relianceUrl = relianceUrlInput
-        ? relianceUrlInput.value.trim()
-        : "";
-
-    // Fetch only the URLs supplied by the user.
-
-    const priceGridRequests = [];
-
-    if (cromaUrl) {
-
-        priceGridRequests.push(
-            getPriceGridPriceFromURL("croma", cromaUrl)
-        );
-
-    }
-
-    if (relianceUrl) {
-
-        priceGridRequests.push(
-            getPriceGridPriceFromURL("reliancedigital", relianceUrl)
-        );
-
-    }
-
-    // Wait for PriceGrid responses.
-
-    if (priceGridRequests.length > 0) {
-
-        const priceGridResults =
-            await Promise.all(priceGridRequests);
+        const retailerStores =
+            await searchOtherRetailers(product.name);
 
         stores = [
             ...stores,
-            ...priceGridResults
+            ...retailerStores
         ];
+
+    } catch (error) {
+
+        console.error(
+            "Automatic retailer search error:",
+            error
+        );
+
+        stores.push(
+            {
+                name: "Croma",
+                price: null,
+                available: false,
+                link: "",
+                source: "Search failed"
+            },
+            {
+                name: "Reliance Digital",
+                price: null,
+                available: false,
+                link: "",
+                source: "Search failed"
+            }
+        );
 
     }
 
-    // Save updated stores to the product.
+    // Update product stores.
 
     product.stores = stores;
 
-    // Only valid prices are used for comparison.
+    // Only compare valid prices.
 
     const availableStores = stores.filter(function(store) {
 
-        return (
-            store.price !== null &&
-            store.price !== undefined &&
-            Number.isFinite(Number(store.price)) &&
-            Number(store.price) > 0
-        );
+        return isValidPrice(store.price);
 
     });
 
@@ -794,14 +735,10 @@ async function comparePrices(productId) {
 
                 ${stores.map(function(store) {
 
-                    const isAvailable =
-                        store.price !== null &&
-                        store.price !== undefined &&
-                        Number.isFinite(Number(store.price)) &&
-                        Number(store.price) > 0;
+                    const available = isValidPrice(store.price);
 
                     const isCheapest =
-                        isAvailable &&
+                        available &&
                         cheapestStore &&
                         Number(store.price) === Number(cheapestStore.price);
 
@@ -826,11 +763,21 @@ async function comparePrices(productId) {
 
                                 ` : escapeHTML(store.name)}
 
+                                ${store.productName ? `
+
+                                    <br>
+
+                                    <small>
+                                        ${escapeHTML(store.productName)}
+                                    </small>
+
+                                ` : ""}
+
                             </td>
 
                             <td>
 
-                                ${isAvailable
+                                ${available
                                     ? "₹" + formatPrice(store.price)
                                     : "Currently unavailable"
                                 }
@@ -839,7 +786,7 @@ async function comparePrices(productId) {
 
                             <td>
 
-                                ${!isAvailable
+                                ${!available
                                     ? "Unavailable"
                                     : isCheapest
                                         ? "Cheapest Price"
@@ -888,7 +835,7 @@ async function comparePrices(productId) {
 
             <p class="best-deal">
 
-                No live store prices are currently available.
+                No valid store prices are currently available.
 
             </p>
 

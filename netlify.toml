@@ -11,3 +11,7 @@
   from = "/api/products/search"
   to = "/.netlify/functions/products-search"
   status = 200
+[[redirects]]
+  from = "/api/retailer-search"
+  to = "/.netlify/functions/retailer-search"
+  status = 200
